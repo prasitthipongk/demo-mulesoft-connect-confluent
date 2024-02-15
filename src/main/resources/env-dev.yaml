@@ -1,0 +1,8 @@
+confluent:
+ bootstrap-server: 
+ username: 
+ password: 
+ producer-topic: 
+ consume-topic: 
+ group-id:
+ 
