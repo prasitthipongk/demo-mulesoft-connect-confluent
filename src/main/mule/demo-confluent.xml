@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
-http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<kafka:producer-config name="Apache_Kafka_Producer_configuration" doc:name="Apache_Kafka_Producer_configuration" doc:id="31f14b66-5d79-4888-8eff-2b49c16399a9" >
 		<kafka:producer-sasl-plain-connection username="${confluent.username}" password="${confluent.password}" >
 			<tls:context >
@@ -18,7 +19,7 @@ http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/em
 		</kafka:producer-sasl-plain-connection>
 	</kafka:producer-config>
 	<kafka:consumer-config name="Apache_Kafka_Consumer_configuration" doc:name="Apache Kafka Consumer configuration" doc:id="86cde603-e1cf-4db8-a4ce-3b7f0dc9720a" >
-		<kafka:consumer-sasl-plain-connection groupId="${confluent.group-id}" username="${confluent.username}" password="${confluent.password}" >
+		<kafka:consumer-sasl-plain-connection groupId="${confluent.group-id-01}" username="${confluent.username}" password="${confluent.password}" >
 			<tls:context >
 				<tls:trust-store insecure="true" />
 			</tls:context>
@@ -32,7 +33,10 @@ http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/em
 	</kafka:consumer-config>
 	<configuration-properties doc:name="Configuration properties" doc:id="5c6ccb89-c891-486a-a2eb-e80bd0cfa38c" file="env-${env}.yaml" />
 	<global-property doc:name="Global Property" doc:id="f71f77a8-ad38-4815-a450-1c211ae145c3" name="env" value="local" />
-	<flow name="demo-confluentFlow" doc:id="5a4b1d52-3b88-426f-84a5-92dab3c24644" >
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e8cf59b1-fbf9-403b-a966-baf6bfaf6f68" basePath="/api/v1/" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="demo-confluent-push-data" doc:id="5a4b1d52-3b88-426f-84a5-92dab3c24644" >
 		<scheduler doc:name="Scheduler" doc:id="095d43e1-30fc-4ed4-99ed-22657bbe3326" >
 			<scheduling-strategy >
 				<fixed-frequency frequency="2" startDelay="1" timeUnit="SECONDS"/>
@@ -51,7 +55,7 @@ output application/json indent=false
 		<logger level="INFO" doc:name="Logger" doc:id="6df5b005-89d3-4454-8f99-57d9f46ff108" message="sent: #[payload]"/>
 		<kafka:publish doc:name="Publish" doc:id="d1b05d26-ffad-4431-9c46-891c06b139f0" config-ref="Apache_Kafka_Producer_configuration" topic="${confluent.producer-topic}"/>
 	</flow>
-	<flow name="demo-confluentFlow1" doc:id="c5995871-8a69-4a34-9826-3cd3ebe79236" >
+	<flow name="demo-confluent-pull-data" doc:id="c5995871-8a69-4a34-9826-3cd3ebe79236" >
 		<kafka:batch-message-listener doc:name="Batch message listener" doc:id="0f487d0a-b5b9-4cb0-abc3-de204c37fa88" config-ref="Apache_Kafka_Consumer_configuration"/>
 		<ee:transform doc:name="Transform Message" doc:id="6674b4ad-06fe-48ad-a398-0ac7f71fa325" >
 			<ee:message >
@@ -62,5 +66,27 @@ payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<logger level="INFO" doc:name="Logger" doc:id="8148b0ca-aaa6-44de-9663-5ed58df18de7" message="received: #[payload]"/>
+	</flow>
+	<flow name="demo-confluent-http-post-data" doc:id="0ed67897-76e4-4c36-879c-314026d5c5ee" >
+		<http:listener doc:name="Listener" doc:id="b2b88c39-e23a-40f2-8303-ababfb09a62a" config-ref="HTTP_Listener_config" path="/data" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="38a43e98-d1e2-4009-9daf-36d86ae7354d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<kafka:publish doc:name="Publish" doc:id="49309378-aac8-4cc9-b7c1-77b8e35f9f8f" config-ref="Apache_Kafka_Producer_configuration" topic="${confluent.producer-topic}"/>
+		<ee:transform doc:name="Transform Message" doc:id="9a59c90a-a3df-4a22-b11c-5d3389b80f9c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" : "successful"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
 	</flow>
 </mule>
